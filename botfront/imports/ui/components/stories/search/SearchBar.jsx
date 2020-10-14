@@ -44,7 +44,7 @@ const SearchBar = (props) => {
             },
         });
         setSearching(false);
-        setResults(data.stories.map(story => ({
+        setResults(data.dialogueFragments.map(story => ({
             title: story.title, _id: story._id, description: story.storyGroupId,
         })));
     }, 500), [language, projectId]);
