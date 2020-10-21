@@ -1,8 +1,10 @@
 import { Meteor } from 'meteor/meteor';
 import axios from 'axios';
+import _ from 'lodash';
 
 import { check } from 'meteor/check';
 
+import { safeDump } from 'js-yaml';
 import { Endpoints } from '../endpoints/endpoints.collection';
 import { Credentials } from '../credentials';
 
@@ -58,8 +60,19 @@ if (Meteor.isServer) {
             const rasaData = await Meteor.callWithPromise(
                 'rasa.getTrainingPayload',
                 projectId,
-                { ...passedLang, joinStoryFiles: false },
+                { ...passedLang },
             );
+
+            const fragmentsByGroup = _.chain([...rasaData.stories, ...rasaData.rules])
+                .groupBy(({ metadata: { group } } = {}) => group)
+                .map((fragments, group) => ({ group, fragments }))
+                .value()
+                .map(({ fragments, group }) => {
+                    const stories = fragments.filter(f => f.story);
+                    const rules = fragments.filter(f => f.rule);
+                    const fragmentsByType = safeDump({ stories, rules });
+                    return { group, fragments: fragmentsByType };
+                });
 
             const exportData = {
                 config:
@@ -73,7 +86,7 @@ if (Meteor.isServer) {
                     language === 'all'
                         ? rasaData.nlu
                         : { [language]: rasaData.nlu[language] },
-                stories: rasaData.stories,
+                fragments: fragmentsByGroup,
             };
             return exportData;
         },
